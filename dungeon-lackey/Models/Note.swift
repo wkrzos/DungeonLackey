@@ -1,10 +1,3 @@
-//
-//  Note.swift
-//  dungeon-lackey
-//
-//  Created by stud on 05/11/2024.
-//
-
 import Foundation
 import SwiftData
 
@@ -14,11 +7,12 @@ final class Note {
     var title: String
     var date: Date
     var content: String
-    var tags: [Tag] = [] // Replace Set with Array for compatibility
+    @Relationship var tags: [Tag]
 
     init(title: String, date: Date, content: String) {
         self.title = title
         self.date = date
         self.content = content
+        self.tags = []
     }
 }
