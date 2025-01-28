@@ -2,22 +2,48 @@ import SwiftUI
 import SwiftData
 
 struct SearchView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var searchQuery: String = ""
     @State private var filteredNotes: [Note] = []
     
     var body: some View {
-        NavigationView {
-            VStack {
-                // Search bar
+        VStack {
+            // Beautified Search Bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gray)
                 TextField("Search notes...", text: $searchQuery)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding()
                     .onChange(of: searchQuery) { _ in
                         performSearch()
                     }
-                
-                // List of filtered notes
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemGray6))
+            )
+            .padding(.horizontal)
+
+            // List or Placeholder
+            if filteredNotes.isEmpty {
+                VStack {
+                    Text("PAGE ***NOT*** FOUND")
+                        .font(.largeTitle)
+                        .bold()
+                        .multilineTextAlignment(.center)
+                    
+                    Text("""
+                    We live in a world of uncertainty. But certainly, the note you were looking for isn't here. \
+                    Perhaps the halfling has stolen it and hidden it in another place. \
+                    Try searching for what you were looking for in another realm.
+                    """)
+                    .italic()
+                    .multilineTextAlignment(.center)
+                    .padding()
+                }
+                .padding()
+            } else {
                 List(filteredNotes) { note in
                     VStack(alignment: .leading) {
                         Text(note.title)
@@ -29,12 +55,29 @@ struct SearchView: View {
                             .lineLimit(1)
                     }
                 }
-                .navigationTitle("Search Notes")
+            }
+
+            Spacer()
+        }
+        .navigationTitle("Search Notes")
+        .navigationBarBackButtonHidden(true)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.left")
+                        Text("Back")
+                    }
+                }
             }
         }
         .onAppear {
             loadNotes()
         }
+        BottomNavigationBar()
     }
     
     private func performSearch() {
@@ -68,9 +111,6 @@ private let dateFormatter: DateFormatter = {
     return formatter
 }()
 
-
-
 #Preview {
     SearchView()
 }
-

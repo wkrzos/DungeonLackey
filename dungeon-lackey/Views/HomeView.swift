@@ -4,13 +4,9 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
 
-    // Fetch all Campaigns sorted by title
     @Query(sort: \Campaign.title, order: .forward) var campaigns: [Campaign]
-
-    // Fetch the most recently accessed Notes, sorted by date (newest first)
     @Query(sort: \Note.date, order: .reverse) var lastAccessedNotes: [Note]
 
-    // Compute the next session from campaigns
     var nextSession: Campaign? {
         campaigns
             .filter { $0.nextSession != nil }
@@ -19,7 +15,7 @@ struct HomeView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
+            ZStack {
                 VStack(alignment: .leading, spacing: 20) {
                     // Next Session Section
                     if let nextSession {
@@ -94,35 +90,43 @@ struct HomeView: View {
                     .padding(.horizontal)
 
                     // Campaigns Section
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Text("Campaigns")
-                                .font(.headline)
-                            Spacer()
-                            Button(action: addCampaign) {
-                                Image(systemName: "plus.circle")
-                                    .font(.title2)
+                        VStack(alignment: .leading) {
+                            HStack {
+                                Text("Campaigns")
+                                    .font(.headline)
+                                Spacer()
+                                Button(action: addCampaign) {
+                                    Image(systemName: "plus.circle")
+                                        .font(.title2)
+                                }
                             }
-                        }
 
-                        if campaigns.isEmpty {
-                            Text("No campaigns yet. Add one to get started!")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(campaigns) { campaign in
-                                NavigationLink(destination: CampaignView(campaign: campaign)) {
-                                    CampaignRow(campaign: campaign)
+                            ScrollView{
+                                if campaigns.isEmpty {
+                                    Text("No campaigns yet. Add one to get started!")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(campaigns) { campaign in
+                                        NavigationLink(destination: CampaignView(campaign: campaign)) {
+                                            CampaignRow(campaign: campaign)
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                    .padding(.horizontal)
+                        .padding(.horizontal)
                 }
                 .padding(.vertical)
+
+                // Fixed Bottom Navigation Bar
+                VStack {
+                    Spacer()
+                    BottomNavigationBar()
+                }
             }
         }
-        BottomNavigationBar()
+        .navigationBarBackButtonHidden(true)
     }
 
     private func addCampaign() {
@@ -140,10 +144,47 @@ struct HomeView: View {
         }
     }
 
-    private func showLastNote() {}
-    private func showNotes() {}
-    private func showLore() {}
+    private func showLastNote() {
+        guard let lastNote = lastAccessedNotes.first else {
+            print("No notes available.")
+            return
+        }
+        // Navigate to the NoteDetailsView with the newest note
+        if let window = UIApplication.shared.windows.first {
+            let rootView = NoteDetailsView(note: lastNote)
+            let hostingController = UIHostingController(rootView: rootView)
+            window.rootViewController?.present(hostingController, animated: true, completion: nil)
+        }
+    }
+
+    private func showNotes() {
+        guard let firstCampaign = campaigns.first else {
+            print("No campaigns available.")
+            return
+        }
+        // Navigate to the CampaignView for the first campaign
+        if let window = UIApplication.shared.windows.first {
+            let rootView = CampaignView(campaign: firstCampaign)
+            let hostingController = UIHostingController(rootView: rootView)
+            window.rootViewController?.present(hostingController, animated: true, completion: nil)
+        }
+    }
+
+    private func showLore() {
+        guard let firstCampaign = campaigns.first else {
+            print("No campaigns available.")
+            return
+        }
+        // Navigate to the CampaignView for lore (reuse CampaignView)
+        if let window = UIApplication.shared.windows.first {
+            let rootView = CampaignView(campaign: firstCampaign)
+            let hostingController = UIHostingController(rootView: rootView)
+            window.rootViewController?.present(hostingController, animated: true, completion: nil)
+        }
+    }
+
 }
+
 
 // MARK: - CampaignRow
 
