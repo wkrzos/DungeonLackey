@@ -21,7 +21,7 @@ struct BottomNavigationBar: View {
                 .frame(maxWidth: .infinity)
             }
             
-            NavigationLink(destination: AddNoteView()) {
+            NavigationLink(destination: OtherView()) {
                 VStack {
                     Image(systemName: "plus")
                     Text("Add Note")
@@ -47,4 +47,3 @@ struct BottomNavigationBar: View {
 #Preview {
     BottomNavigationBar()
 }
-

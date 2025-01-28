@@ -3,41 +3,47 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var campaigns: [Campaign] = []
-    @State private var lastAccessedNotes: [Note] = []
-    @State private var nextSession: Campaign? = nil
+
+    // Fetch all Campaigns sorted by title
+    @Query(sort: \Campaign.title, order: .forward) var campaigns: [Campaign]
+
+    // Fetch the most recently accessed Notes, sorted by date (newest first)
+    @Query(sort: \Note.date, order: .reverse) var lastAccessedNotes: [Note]
+
+    // Compute the next session from campaigns
+    var nextSession: Campaign? {
+        campaigns
+            .filter { $0.nextSession != nil }
+            .min { $0.nextSession! < $1.nextSession! }
+    }
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    
                     // Next Session Section
-                    if let nextSession = nextSession {
+                    if let nextSession {
                         VStack(alignment: .leading) {
-                            Text("Next Session")
-                                .font(.title2)
-                                .bold()
-                            
-                            Text("Campaign: \(nextSession.title)")
-                                .font(.headline)
                             if let sessionDate = nextSession.nextSession {
-                                Text("Date: \(sessionDate, formatter: dateFormatter)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                Text("Next: \(sessionDate, formatter: dateFormatter)")
+                                    .font(.headline)
                             }
-                            
+
+                            Text("Campaign: \(nextSession.title)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
                             HStack {
                                 Button(action: showLastNote) {
                                     Text("Last Note")
                                 }
                                 .buttonStyle(.bordered)
-                                
+
                                 Button(action: showNotes) {
                                     Text("Notes")
                                 }
                                 .buttonStyle(.bordered)
-                                
+
                                 Button(action: showLore) {
                                     Text("Lore")
                                 }
@@ -45,22 +51,30 @@ struct HomeView: View {
                             }
                         }
                         .padding()
+                        .frame(maxWidth: .infinity)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color(.systemGray6))
                         )
+                        .padding(.horizontal)
                     } else {
                         Text("No upcoming sessions.")
                             .font(.headline)
                             .foregroundColor(.secondary)
                             .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.systemGray6))
+                            )
+                            .padding(.horizontal)
                     }
-                    
+
                     // Jump Back In Section
                     VStack(alignment: .leading) {
                         Text("Jump Back In")
                             .font(.headline)
-                        
+
                         if lastAccessedNotes.isEmpty {
                             Text("No recently accessed notes.")
                                 .font(.subheadline)
@@ -69,14 +83,16 @@ struct HomeView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
                                     ForEach(lastAccessedNotes) { note in
-                                        NoteCard(note: note)
+                                        NavigationLink(destination: NoteDetailsView(note: note)) {
+                                            NoteCard(note: note)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                     .padding(.horizontal)
-                    
+
                     // Campaigns Section
                     VStack(alignment: .leading) {
                         HStack {
@@ -88,14 +104,16 @@ struct HomeView: View {
                                     .font(.title2)
                             }
                         }
-                        
+
                         if campaigns.isEmpty {
                             Text("No campaigns yet. Add one to get started!")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(campaigns) { campaign in
-                                CampaignRow(campaign: campaign, deleteAction: deleteCampaign)
+                                NavigationLink(destination: CampaignView(campaign: campaign)) {
+                                    CampaignRow(campaign: campaign)
+                                }
                             }
                         }
                     }
@@ -103,58 +121,70 @@ struct HomeView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("Home")
-            .onAppear(perform: loadData)
         }
+        BottomNavigationBar()
     }
-    
-    private func loadData() {
-        // Load campaigns, notes, and determine the next session campaign
-        campaigns = (try? modelContext.fetch(FetchDescriptor<Campaign>())) ?? []
-        lastAccessedNotes = getLastAccessedNotes()
-        nextSession = getNextSessionCampaign()
-    }
-    
-    private func getLastAccessedNotes() -> [Note] {
-        // Mock logic to fetch the last accessed notes
-        return [] // Replace with actual implementation
-    }
-    
-    private func getNextSessionCampaign() -> Campaign? {
-        // Determine the campaign with the closest upcoming session
-        return campaigns.filter { $0.nextSession != nil }
-            .min(by: { $0.nextSession! < $1.nextSession! })
-    }
-    
-    private func showLastNote() {
-        // Show the last note of the next session campaign
-    }
-    
-    private func showNotes() {
-        // Show all notes of the next session campaign
-    }
-    
-    private func showLore() {
-        // Show lore-related notes of the next session campaign
-    }
-    
+
     private func addCampaign() {
-        // Logic to add a new campaign
-    }
-    
-    private func deleteCampaign(_ campaign: Campaign) {
-        // Logic to delete a campaign
-        if let index = campaigns.firstIndex(where: { $0.id == campaign.id }) {
-            modelContext.delete(campaigns[index])
-            campaigns.remove(at: index)
+        let newCampaign = Campaign(
+            title: "New Campaign",
+            backgroundPicture: "Nada",
+            nextSession: Date()
+        )
+        modelContext.insert(newCampaign)
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save new campaign:", error)
         }
+    }
+
+    private func showLastNote() {}
+    private func showNotes() {}
+    private func showLore() {}
+}
+
+// MARK: - CampaignRow
+
+struct CampaignRow: View {
+    let campaign: Campaign
+
+    var body: some View {
+        HStack(spacing: 15) {
+            // Campaign background picture as a square
+            Image(campaign.backgroundPicture)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(campaign.title)
+                    .font(.headline)
+
+                if let sessionDate = campaign.nextSession {
+                    Text("Next Session: \(sessionDate, formatter: dateFormatter)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding()
+        .frame(maxWidth: .infinity) // Full width
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemGray6))
+        )
     }
 }
 
-// A reusable card for displaying notes
+// MARK: - NoteCard
+
 struct NoteCard: View {
     let note: Note
-    
+
     var body: some View {
         VStack {
             Text(note.title)
@@ -165,7 +195,7 @@ struct NoteCard: View {
                 .foregroundColor(.secondary)
         }
         .padding()
-        .frame(width: 120, height: 80)
+        .frame(width: 120, height: 120) // Adjust size for square layout
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.systemGray6))
@@ -173,43 +203,14 @@ struct NoteCard: View {
     }
 }
 
-// A reusable row for displaying campaigns
-struct CampaignRow: View {
-    let campaign: Campaign
-    let deleteAction: (Campaign) -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(campaign.title)
-                    .font(.headline)
-                if let sessionDate = campaign.nextSession {
-                    Text("Next Session: \(sessionDate, formatter: dateFormatter)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-            Button(action: { deleteAction(campaign) }) {
-                Image(systemName: "trash")
-                    .foregroundColor(.red)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.systemGray6))
-        )
-    }
-}
+// MARK: - Date Formatter
 
-// Formatter for displaying dates
 private let dateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateStyle = .medium
     return formatter
 }()
 
-#Preview{
+#Preview {
     HomeView()
 }

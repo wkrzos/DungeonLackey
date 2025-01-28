@@ -4,10 +4,13 @@ import SwiftData
 @main
 struct dungeon_lackeyApp: App {
     var sharedModelContainer: ModelContainer = {
+        // Add Campaign to the schema array below
         let schema = Schema([
             Note.self,
-            Tag.self
+            Tag.self,
+            Campaign.self
         ])
+        
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
